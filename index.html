@@ -65,7 +65,7 @@ try{const k=localStorage.getItem('agnes_key');if(k){$('key').value=k;$('remember
 function log(t){const el=$('log');el.textContent+=new Date().toLocaleTimeString()+' - '+t+'\n';el.scrollTop=el.scrollHeight}
 function badge(t,c){const b=$('statusBadge');b.textContent=t;b.className='badge '+(c||'')}
 const sleep=(ms,sig)=>new Promise((ok,no)=>{if(sig.aborted)return no(new DOMException('Aborted','AbortError'));const t=setTimeout(ok,ms);sig.addEventListener('abort',()=>{clearTimeout(t);no(new DOMException('Aborted','AbortError'))},{once:true})});
-const msgOf=d=>{const m=d&&(d.error||d.detail||d.message);return typeof m==='string'?m:(m?JSON.stringify(m):JSON.stringify(d||{}))};
+const msgOf=d=>{let m=d&&(d.error||d.detail||d.message);if(m&&typeof m==='object')m=m.message||m.msg||m.detail||JSON.stringify(m);return typeof m==='string'&&m?m:JSON.stringify(d||{})};   // error object hole-o porar moto text
 async function api(path,opt,sig){const r=await fetch(API+path,{...opt,signal:sig});let d={};try{d=await r.json()}catch{}return{r,d}}
 function busy(on){$('gen').disabled=on;$('stop').disabled=!on}
 $('stop').onclick=()=>ctl&&ctl.abort();
