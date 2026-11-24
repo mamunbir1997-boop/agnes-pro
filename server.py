@@ -199,6 +199,12 @@ async def status(request: Request, task_id: str, api_key: str = ""):
     except ValueError:
         return err(r.text[:300] or f"HTTP {r.status_code}", r.status_code)
     if r.status_code >= 400:
+        if r.status_code >= 400:
+        # অবজেক্ট থেকে আসল এরর মেসেজ টেক্সট আকারে বের করা
+        err_msg = data.get("message") or data.get("detail") or data.get("error")
+        if isinstance(err_msg, dict):
+            err_msg = err_msg.get("message") or str(err_msg)
+        return err(str(err_msg or data), r.status_code)
         return JSONResponse(data, status_code=r.status_code)
     # Agnes-er asol response: status = completed/failed, video-r link = top-level "url"
     data["video_url"] = data.get("url") or data.get("video_url")
