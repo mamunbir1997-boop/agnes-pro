@@ -1,14 +1,3 @@
-# Agnes Pro - Backend proxy server
-# Browser -> ei server -> Agnes API. Tai CORS atkay na, key-o browser theke Agnes-e jay na.
-#
-# Run:
-#   pip install fastapi uvicorn httpx
-#   python server.py
-# Browser: http://localhost:8000
-#
-# Video_Studio_Pro.html er jonno: ⚙ অ্যাডভান্সড সেটিংসে "Agnes API domain" = http://localhost:8000
-# (ei file er pashe index.html ba Video_Studio_Pro.html thakle "/" te oi page-i khulbe)
-
 import asyncio
 import ipaddress
 import os
@@ -20,14 +9,13 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-AGNES_HOST = "https://apihub.agnes-ai.com"
+AGNES_HOST = "https://agnes-ai.com"
 VIDEO_MODEL = "agnes-video-2.5-flash"
 HERE = os.path.dirname(os.path.abspath(__file__))
 MAX_MEDIA_BYTES = 150 * 1024 * 1024
 
 app = FastAPI()
 
-# allow_credentials=True + "*" origin valid na, tai bad deoa hoyeche (cookie lagche na)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,8 +31,25 @@ async def _close():
     await client.aclose()
 
 
+def extract_error_message(data, fallback="Unknown API Error"):
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        for key in ("message", "detail", "error", "msg", "reason"):
+            val = data.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+            if isinstance(val, dict):
+                nested = extract_error_message(val, "")
+                if nested:
+                    return nested
+        return str(data)
+    return str(data or fallback)
+
+
 def err(msg, code=500):
-    return JSONResponse({"error": msg, "detail": msg}, status_code=code)
+    clean_msg = extract_error_message(msg)
+    return JSONResponse({"error": clean_msg, "detail": clean_msg}, status_code=code)
 
 
 def passthrough(r: httpx.Response) -> Response:
@@ -55,7 +60,6 @@ def passthrough(r: httpx.Response) -> Response:
     )
 
 
-# ---------- Frontend ----------
 @app.get("/")
 def home():
     for name in ("index.html", "Video_Studio_Pro.html"):
@@ -65,7 +69,6 @@ def home():
     return err("index.html ba Video_Studio_Pro.html server.py er pashe rakho", 404)
 
 
-# ---------- 1) Transparent proxy (Video_Studio_Pro.html eita use kore) ----------
 async def forward(request: Request, url: str):
     headers = {}
     if request.headers.get("authorization"):
@@ -91,7 +94,6 @@ async def agnesapi(request: Request):
     return await forward(request, f"{AGNES_HOST}/agnesapi")
 
 
-# ---------- 2) Media proxy: ready video/image file-e CORS khule dey (final jora lagano-r jonno) ----------
 def _is_public(host: str) -> bool:
     try:
         infos = socket.getaddrinfo(host, None)
@@ -106,7 +108,6 @@ def _is_public(host: str) -> bool:
 
 @app.get("/media")
 async def media(url: str):
-    # SSRF theke bachte: shudhu https + public host, redirect-o prottekbar check
     for _ in range(4):
         u = urlparse(url)
         if u.scheme != "https" or not u.hostname or not await asyncio.to_thread(_is_public, u.hostname):
@@ -128,32 +129,33 @@ async def media(url: str):
     return err("Onek beshi redirect", 502)
 
 
-# ---------- 3) Purono-style simple API (apnar nijer index.html er jonno) ----------
 @app.post("/api/generate")
 async def generate(req: Request):
     try:
         body = await req.json()
     except Exception:
-        return err("JSON body dao", 400)
+        return err("Invalid JSON request", 400)
+    
     api_key = (body.get("api_key") or "").strip()
     prompt = (body.get("prompt") or "").strip()
+    
     if not api_key:
-        return err("API key dao", 400)
+        return err("API key deoa hoy ni!", 400)
     if not prompt:
-        return err("Prompt dao", 400)
+        return err("Prompt khali rakha jabe na!", 400)
 
     ratio = body.get("ratio", "9:16")
     if ratio not in ("21:9", "16:9", "4:3", "1:1", "3:4", "9:16"):
         ratio = "9:16"
     secs = "".join(ch for ch in str(body.get("duration", "5")) if ch.isdigit()) or "5"
-    secs = str(min(12, max(4, int(secs))))  # Agnes Flash: 4-12 sec
+    secs = str(min(12, max(4, int(secs))))
 
     payload = {
         "model": VIDEO_MODEL,
         "prompt": prompt,
         "mode": "text",
         "seconds": secs,
-        "size": "720P",  # Flash shudhu 720P
+        "size": "720P",
         "aspect_ratio": ratio,
     }
     try:
@@ -163,29 +165,29 @@ async def generate(req: Request):
             json=payload,
         )
     except httpx.HTTPError as e:
-        return err(f"Agnes-er sathe connect hoy ni: {e}", 502)
+        return err(f"Agnes server connection failed: {str(e)}", 502)
+    
     try:
         data = r.json()
     except ValueError:
-        return err(r.text[:300] or f"HTTP {r.status_code}", r.status_code)
+        return err(r.text[:300] or f"HTTP Error {r.status_code}", r.status_code)
+    
     if r.status_code >= 400:
-        if r.status_code >= 400:
-        # অবজেক্ট থেকে আসল এরর মেসেজ টেক্সট আকারে বের করা
-        err_msg = data.get("message") or data.get("detail") or data.get("error")
-        if isinstance(err_msg, dict):
-            err_msg = err_msg.get("message") or str(err_msg)
-        return err(str(err_msg or data), r.status_code)
-        return JSONResponse(data, status_code=r.status_code)
-    data["task_id"] = data.get("video_id") or data.get("id") or data.get("task_id")
+        return err(data, r.status_code)
+        
+    task_id = data.get("video_id") or data.get("id") or data.get("task_id")
+    if not task_id:
+        return err(f"Task ID paoya jay ni. Response: {data}", 500)
+        
+    data["task_id"] = task_id
     return JSONResponse(data)
 
 
 @app.get("/api/status")
 async def status(request: Request, task_id: str, api_key: str = ""):
-    # key header-e dile bhalo (URL-e thakle log-e dhora porte pare); purono frontend-er jonno query-o cholbe
     key = (request.headers.get("x-api-key") or api_key).strip()
     if not key:
-        return err("API key dao", 400)
+        return err("API key missing", 400)
     try:
         r = await client.get(
             f"{AGNES_HOST}/agnesapi",
@@ -193,28 +195,21 @@ async def status(request: Request, task_id: str, api_key: str = ""):
             headers={"Authorization": f"Bearer {key}"},
         )
     except httpx.HTTPError as e:
-        return err(f"Agnes-er sathe connect hoy ni: {e}", 502)
+        return err(f"Agnes status check failed: {str(e)}", 502)
+    
     try:
         data = r.json()
     except ValueError:
-        return err(r.text[:300] or f"HTTP {r.status_code}", r.status_code)
+        return err(r.text[:300] or f"HTTP Error {r.status_code}", r.status_code)
+    
     if r.status_code >= 400:
-        if r.status_code >= 400:
-        # অবজেক্ট থেকে আসল এরর মেসেজ টেক্সট আকারে বের করা
-        err_msg = data.get("message") or data.get("detail") or data.get("error")
-        if isinstance(err_msg, dict):
-            err_msg = err_msg.get("message") or str(err_msg)
-        return err(str(err_msg or data), r.status_code)
-        return JSONResponse(data, status_code=r.status_code)
-    # Agnes-er asol response: status = completed/failed, video-r link = top-level "url"
+        return err(data, r.status_code)
+        
     data["video_url"] = data.get("url") or data.get("video_url")
     return JSONResponse(data)
 
 
 if __name__ == "__main__":
     import uvicorn
-
-    # Render/Railway ei hosting-e PORT env thake -> tokhon 0.0.0.0 lage (na hole site khole na).
-    # Nijer computer-e chalale 127.0.0.1 (shudhu tumi). Phone theke LAN-e dhorte: HOST=0.0.0.0
     default_host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
     uvicorn.run(app, host=os.environ.get("HOST", default_host), port=int(os.environ.get("PORT", 8000)))
