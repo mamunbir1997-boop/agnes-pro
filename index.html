@@ -1,229 +1,120 @@
 <!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AGNES PRO - Real Video Generator</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background: #0f172a; color: #f8fafc; padding: 16px; line-height: 1.5; }
-    .container { max-width: 680px; margin: 0 auto; background: #1e293b; padding: 20px; border-radius: 16px; border: 1px solid #334155; }
-    h1 { font-size: 1.4rem; color: #38bdf8; margin-bottom: 4px; }
-    .sub { font-size: 0.85rem; color: #94a3b8; margin-bottom: 18px; }
-    label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; color: #cbd5e1; }
-    input, textarea, select { width: 100%; background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 14px; font-size: 0.95rem; }
-    input:focus, textarea:focus, select:focus { outline: none; border-color: #38bdf8; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .btn-group { display: flex; gap: 10px; margin-bottom: 16px; }
-    button { flex: 1; padding: 14px; border: none; border-radius: 8px; font-weight: 700; font-size: 0.95rem; cursor: pointer; }
-    #genBtn { background: #0284c7; color: #fff; }
-    #genBtn:disabled { background: #475569; cursor: not-allowed; }
-    #stopBtn { background: #dc2626; color: #fff; max-width: 100px; display: none; }
-    .status-bar { display: flex; justify-content: space-between; background: #0f172a; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; margin-bottom: 12px; border: 1px solid #334155; }
-    video { width: 100%; border-radius: 10px; background: #000; display: none; margin-bottom: 12px; max-height: 450px; }
-    .dl-row { display: none; gap: 10px; margin-bottom: 16px; }
-    .dl-btn { background: #16a34a; color: #fff; text-decoration: none; text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; flex: 1; font-size: 0.9rem; }
-    .copy-btn { background: #334155; color: #fff; padding: 12px; border-radius: 8px; font-weight: bold; border: none; cursor: pointer; }
-    .log-box { background: #020617; color: #4ade80; font-family: monospace; font-size: 0.82rem; padding: 12px; border-radius: 8px; height: 150px; overflow-y: auto; border: 1px solid #1e293b; white-space: pre-wrap; word-break: break-word; }
-    .err-text { color: #f87171; }
-  </style>
-</head>
-<body>
-<div class="container">
-  <h1>AGNES PRO</h1>
-  <div class="sub">Frontend + Backend • 720p Real Video Generator</div>
-
-  <label>Agnes API Key</label>
-  <input type="password" id="apiKey" placeholder="sk-..." />
-
-  <label>Prompt (English-e likhle valo hoy)</label>
-  <textarea id="prompt" rows="3">A cinematic shot of a cat walking on the beach at sunset, soft ocean waves, warm golden lighting, realistic motion</textarea>
-
-  <div class="row">
-    <div>
-      <label>Ratio</label>
-      <select id="ratio">
-        <option value="9:16">9:16 Shorts</option>
-        <option value="16:9">16:9 YouTube</option>
-        <option value="1:1">1:1 Square</option>
-      </select>
-    </div>
-    <div>
-      <label>Duration (sec)</label>
-      <select id="duration">
-        <option value="5">5s</option>
-        <option value="8">8s</option>
-        <option value="10">10s</option>
-        <option value="12">12s</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="btn-group">
-    <button id="genBtn" onclick="startGenerate()">▶ GENERATE VIDEO (720p)</button>
-    <button id="stopBtn" onclick="stopPolling()">⏹ Stop</button>
-  </div>
-
-  <div class="status-bar">
-    <span id="statusText">IDLE</span>
-    <span id="progressText">0%</span>
-  </div>
-
-  <video id="videoPlayer" controls playsinline></video>
-
-  <div class="dl-row" id="dlRow">
-    <a id="downloadLink" class="dl-btn" href="#" download="agnes_video.mp4" target="_blank">⬇ DIRECT DOWNLOAD VIDEO</a>
-    <button class="copy-btn" onclick="copyLink()">Copy Direct Link</button>
-  </div>
-
-  <label>Live Log</label>
-  <div class="log-box" id="logBox">Ready. Generate chap dau...</div>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGNES PRO - Real Video Generator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a0a0f;color:#fff;font-family:Inter,system-ui,sans-serif}
+header{padding:16px 20px;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.logo{font-weight:900;letter-spacing:1px}.logo span{color:#8b5cf6}
+.wrap{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}.badge.hd{display:none}}
+.card{background:#13131c;border:1px solid #26263a;border-radius:16px;padding:18px;min-width:0}
+input,textarea,select{width:100%;background:#0a0a0f;border:1px solid #333;color:#fff;border-radius:10px;padding:12px;margin:8px 0;font:inherit}
+input[type=checkbox]{width:auto;margin:0 8px 0 0}
+textarea{min-height:110px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row button{flex:1;min-width:70px;padding:10px;border-radius:10px;border:1px solid #333;background:#1a1a26;color:#fff;cursor:pointer}
+.row button.active{background:#7c3aed;border-color:#7c3aed}
+#gen{flex:3;padding:14px;border:0;border-radius:12px;background:linear-gradient(90deg,#7c3aed,#2563eb);color:#fff;font-weight:800;font-size:16px;cursor:pointer}
+#gen:disabled{opacity:.5;cursor:not-allowed}
+#stop{flex:1;padding:14px;border:1px solid #7a3340;border-radius:12px;background:#3b1d27;color:#fff;font-weight:700;cursor:pointer}#stop:disabled{opacity:.4;cursor:not-allowed}
+#log{background:#000;border-radius:12px;padding:12px;height:220px;overflow:auto;font-family:monospace;font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;background:#222;font-size:12px}
+.badge.ok{background:#14532d}.badge.bad{background:#7f1d1d}.badge.run{background:#1e3a8a}
+progress{width:100%}video{width:100%;max-height:70vh;border-radius:12px;background:#000}
+.dl{display:block;text-align:center;margin-top:10px;padding:12px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;cursor:pointer}
+.note{font-size:13px;color:#a1a1aa;line-height:1.6}label{font-size:13px;color:#cfcfe0}
+.chk{display:flex;align-items:center;margin-top:6px}
+</style></head><body>
+<header><div class="logo">AGNES <span>PRO</span></div><div class="badge hd">Frontend + Backend • 720p</div></header>
+<div class="wrap">
+<div class="card">
+<h2 style="margin:0">Create Video</h2>
+<p class="note">Key kokhono code e thake na. Tumi nije bosaba. Server sudhu request ta Agnes e pathay.</p>
+<label for="key">Agnes API Key</label>
+<input id="key" type="password" autocomplete="off" placeholder="platform.agnes-ai.com theke key bosau">
+<label class="chk"><input type="checkbox" id="remember">Key ei browser e mone rakho</label>
+<label for="prompt" style="display:block;margin-top:10px">Prompt (English e likhle valo hoy)</label>
+<textarea id="prompt">A cinematic shot of a cat walking on the beach at sunset, soft ocean waves, warm golden lighting, realistic motion</textarea>
+<label>Ratio</label><div class="row" id="ratioRow"><button data-v="9:16" class="active">9:16 Shorts</button><button data-v="16:9">16:9 YouTube</button><button data-v="1:1">1:1</button></div>
+<label style="margin-top:10px;display:block">Duration (sec)</label><div class="row" id="durRow"><button data-v="5" class="active">5s</button><button data-v="8">8s</button><button data-v="10">10s</button><button data-v="12">12s</button></div>
+<div class="row" style="margin-top:12px"><button id="gen">▶ GENERATE VIDEO (720p)</button><button id="stop" disabled>⏹ Stop</button></div>
+<p class="note">Asol AI video instant hoy na. Prai 3–5 minute lage. Eita queue + polling, fake animation na. Tab khola rekho.</p>
 </div>
-
+<div class="card">
+<h3 style="margin:0">Preview + Download</h3>
+<p><span class="badge" id="statusBadge">IDLE</span> <span id="taskId" class="note"></span></p>
+<progress id="prog" value="0" max="100"></progress><p id="progText" class="note">0%</p>
+<video id="vid" controls playsinline style="display:none"></video>
+<a id="dl" class="dl" style="display:none" href="#">⬇ DIRECT DOWNLOAD VIDEO</a>
+<p><input id="link" readonly placeholder="Direct link ekhane asbe"></p>
+<button id="copy" style="width:100%;padding:10px;border-radius:10px;background:#222;color:#fff;border:1px solid #333;cursor:pointer">Copy Direct Link</button>
+<h4>Live Log</h4>
+<div id="log">Ready. Generate chap dau...
+</div>
+</div>
+</div>
 <script>
-  let pollTimer = null;
-  let currentVideoUrl = "";
+const $=id=>document.getElementById(id);
+const API=location.protocol==='file:'?'http://localhost:8000':'';   // file:// theke khulle server-er address
+const POLL=()=>window.__POLL||5000;
+let ratio='9:16',duration='5',ctl=null,videoUrl='';
 
-  const savedKey = localStorage.getItem("agnes_api_key");
-  if (savedKey) document.getElementById("apiKey").value = savedKey;
+function pick(row,set){document.querySelectorAll('#'+row+' button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#'+row+' button').forEach(x=>x.classList.remove('active'));b.classList.add('active');set(b.dataset.v)})}
+pick('ratioRow',v=>ratio=v);pick('durRow',v=>duration=v);
 
-  function log(msg, isError = false) {
-    const box = document.getElementById("logBox");
-    const time = new Date().toLocaleTimeString();
-    const cleanMsg = typeof msg === "object" ? JSON.stringify(msg) : String(msg);
-    const line = document.createElement("div");
-    if (isError) line.className = "err-text";
-    line.textContent = `[${time}] ${cleanMsg}`;
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-  }
+try{const k=localStorage.getItem('agnes_key');if(k){$('key').value=k;$('remember').checked=true}}catch{}
+function log(t){const el=$('log');el.textContent+=new Date().toLocaleTimeString()+' - '+t+'\n';el.scrollTop=el.scrollHeight}
+function badge(t,c){const b=$('statusBadge');b.textContent=t;b.className='badge '+(c||'')}
+const sleep=(ms,sig)=>new Promise((ok,no)=>{if(sig.aborted)return no(new DOMException('Aborted','AbortError'));const t=setTimeout(ok,ms);sig.addEventListener('abort',()=>{clearTimeout(t);no(new DOMException('Aborted','AbortError'))},{once:true})});
+const msgOf=d=>{let m=d&&(d.error||d.detail||d.message);if(m&&typeof m==='object')m=m.message||m.msg||m.detail||JSON.stringify(m);return typeof m==='string'&&m?m:JSON.stringify(d||{})};   // error object hole-o porar moto text
+async function api(path,opt,sig){const r=await fetch(API+path,{...opt,signal:sig});let d={};try{d=await r.json()}catch{}return{r,d}}
+function busy(on){$('gen').disabled=on;$('stop').disabled=!on}
+$('stop').onclick=()=>ctl&&ctl.abort();
 
-  function parseError(errData) {
-    if (!errData) return "Unknown error occurred";
-    if (typeof errData === "string") return errData;
-    if (errData.error) return typeof errData.error === "object" ? JSON.stringify(errData.error) : errData.error;
-    if (errData.detail) return typeof errData.detail === "object" ? JSON.stringify(errData.detail) : errData.detail;
-    if (errData.message) return errData.message;
-    return JSON.stringify(errData);
-  }
+$('gen').onclick=async()=>{
+ const key=$('key').value.trim(),prompt=$('prompt').value.trim();
+ if(!key)return alert('Age API Key bosau - platform.agnes-ai.com theke key ne');
+ if(!prompt)return alert('Prompt dao');
+ try{$('remember').checked?localStorage.setItem('agnes_key',key):localStorage.removeItem('agnes_key')}catch{}
+ ctl=new AbortController();const sig=ctl.signal;busy(true);
+ $('vid').style.display='none';$('dl').style.display='none';$('link').value='';$('prog').value=0;$('progText').textContent='0%';$('taskId').textContent='';videoUrl='';
+ badge('QUEUED','run');
+ try{
+  log('1. Frontend -> Backend /api/generate : model=agnes-video-2.5-flash, 720P, ratio='+ratio+', '+duration+'s');
+  let data,tries=0;const until=Date.now()+10*60000;
+  for(;;){   // queue full (503/429) hole nije abar chesta kore
+   const {r,d}=await api('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key,prompt,ratio,duration})},sig);
+   if(r.ok){data=d;break}
+   const m=msgOf(d);
+   if((r.status===503||r.status===429||/queue.*full|busy/i.test(m))&&Date.now()<until){tries++;badge('WAITING','run');log('   Queue full ('+r.status+') - 8s por abar chesta #'+tries+' (kono quota khoroch hoy na)');await sleep(8000,sig);continue}
+   throw new Error(m)}
+  log('2. Backend response: '+JSON.stringify(data).slice(0,300));
+  const id=data.task_id||data.video_id||data.id;
+  if(!id)throw new Error('Task id pai nai');
+  $('taskId').textContent='Task: '+id;
+  log('3. Task paisi, id='+id+'. Prottek '+Math.round(POLL()/1000)+' sec por poll kortesi (max 20 min)...');
+  const t0=Date.now(),end=t0+20*60000;let n=0,errs=0;
+  while(Date.now()<end){
+   await sleep(POLL(),sig);n++;let d;
+   try{const x=await api('/api/status?task_id='+encodeURIComponent(id),{headers:{'X-Api-Key':key}},sig);if(!x.r.ok)throw new Error(msgOf(x.d));d=x.d;errs=0}
+   catch(e){if(e.name==='AbortError')throw e;if(++errs>6)throw e;log('   Poll error ('+e.message+') - abar chesta '+errs+'/6');continue}
+   const st=String(d.status||'').toLowerCase(),pr=Math.max(0,Math.min(100,Math.round(+d.progress||0))),el=Math.round((Date.now()-t0)/1000);
+   log('Poll #'+n+' - status='+(st||'?')+', progress='+pr+'%');
+   badge((st||'queued').toUpperCase(),'run');$('prog').value=pr;$('progText').textContent=pr+'% - '+el+'s elapsed';
+   if(['completed','succeeded','success'].includes(st)){
+    const u=d.video_url||d.url;if(!u)throw new Error('Completed kintu video link nei: '+JSON.stringify(d).slice(0,200));
+    videoUrl=u;log('4. COMPLETED! video_url: '+u);badge('COMPLETED','ok');$('prog').value=100;$('progText').textContent='100% - '+el+'s';
+    $('vid').src=u;$('vid').style.display='block';$('dl').style.display='block';$('link').value=u;return}
+   if(['failed','error','cancelled','canceled'].includes(st))throw new Error('Video failed: '+msgOf(d.error&&typeof d.error==='object'?{error:d.error.message||JSON.stringify(d.error)}:d)+' (prompt change kore abar try koro)')}
+  throw new Error('Timeout - 20 min er beshi lagche. Pore abar try koro')
+ }catch(e){
+  if(e.name==='AbortError'){log('Thamano hoyeche.');badge('STOPPED')}
+  else{badge('ERROR','bad');log('ERROR: '+e.message);if(e instanceof TypeError)log('   Server cholche kina dekho: terminal e "python server.py", tarpor browser e http://localhost:8000 kholo (shudhu HTML file khulle hobe na).');alert('Error: '+e.message)}
+ }finally{busy(false);ctl=null}
+};
 
-  async function startGenerate() {
-    const apiKey = document.getElementById("apiKey").value.trim();
-    const prompt = document.getElementById("prompt").value.trim();
-    const ratio = document.getElementById("ratio").value;
-    const duration = document.getElementById("duration").value;
-
-    if (!apiKey) { alert("Age Agnes API Key dao!"); return; }
-    if (!prompt) { alert("Prompt likho!"); return; }
-
-    localStorage.setItem("agnes_api_key", apiKey);
-    document.getElementById("genBtn").disabled = true;
-    document.getElementById("stopBtn").style.display = "block";
-    document.getElementById("videoPlayer").style.display = "none";
-    document.getElementById("dlRow").style.display = "none";
-    document.getElementById("statusText").textContent = "SUBMITTING...";
-    document.getElementById("progressText").textContent = "5%";
-
-    log("Server-e request pathano hocche...");
-
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: apiKey, prompt, ratio, duration })
-      });
-
-      const rawText = await res.text();
-      let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch {
-        throw new Error(`Server Error (${res.status}): ${rawText.slice(0, 150)}`);
-      }
-
-      if (!res.ok) {
-        throw new Error(parseError(data));
-      }
-
-      const taskId = data.task_id;
-      log(`Task create hoyeche! ID: ${taskId}`);
-      document.getElementById("statusText").textContent = "PROCESSING...";
-      document.getElementById("progressText").textContent = "15%";
-
-      pollStatus(taskId, apiKey);
-    } catch (err) {
-      log(`Error: ${err.message || err}`, true);
-      resetUI("FAILED");
-    }
-  }
-
-  function pollStatus(taskId, apiKey) {
-    let attempts = 0;
-    pollTimer = setInterval(async () => {
-      attempts++;
-      try {
-        const res = await fetch(`/api/status?task_id=${encodeURIComponent(taskId)}`, {
-          headers: { "x-api-key": apiKey }
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(parseError(data));
-        }
-
-        const st = (data.status || "").toLowerCase();
-        const fakePct = Math.min(95, 15 + attempts * 3);
-        document.getElementById("progressText").textContent = `${fakePct}%`;
-
-        if (st === "completed" || st === "succeeded" || data.video_url) {
-          clearInterval(pollTimer);
-          currentVideoUrl = data.video_url;
-          log("Video ready hoyeche!");
-          showVideo(currentVideoUrl);
-          resetUI("COMPLETED", "100%");
-        } else if (st === "failed" || st === "error") {
-          clearInterval(pollTimer);
-          throw new Error(parseError(data) || "Agnes video generate korte pare ni.");
-        } else {
-          log(`Queue-te kaj cholche... (${st || "pending"}) [${attempts * 5}s]`);
-        }
-      } catch (err) {
-        clearInterval(pollTimer);
-        log(`Error: ${err.message || err}`, true);
-        resetUI("FAILED");
-      }
-    }, 5000);
-  }
-
-  function showVideo(url) {
-    const player = document.getElementById("videoPlayer");
-    const proxiedUrl = `/media?url=${encodeURIComponent(url)}`;
-    player.src = proxiedUrl;
-    player.style.display = "block";
-    
-    const dlLink = document.getElementById("downloadLink");
-    dlLink.href = proxiedUrl;
-    document.getElementById("dlRow").style.display = "flex";
-  }
-
-  function copyLink() {
-    if (!currentVideoUrl) return;
-    navigator.clipboard.writeText(currentVideoUrl);
-    alert("Direct video link copy hoyeche!");
-  }
-
-  function stopPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    log("User polling bondho koreche.", true);
-    resetUI("STOPPED");
-  }
-
-  function resetUI(status, pct = "0%") {
-    document.getElementById("genBtn").disabled = false;
-    document.getElementById("stopBtn").style.display = "none";
-    document.getElementById("statusText").textContent = status;
-    if (pct !== "0%") document.getElementById("progressText").textContent = pct;
-  }
-</script>
-</body>
-</html>
+$('dl').onclick=async e=>{e.preventDefault();if(!videoUrl)return;const a=$('dl'),old=a.textContent;a.textContent='Downloading...';
+ try{const r=await fetch(API+'/media?url='+encodeURIComponent(videoUrl));if(!r.ok)throw new Error('HTTP '+r.status);const b=await r.blob(),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download='agnes-video-720p.mp4';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(l.href),4000)}
+ catch(err){log('Direct download hoyni ('+err.message+'), notun tab e khulchhi - sekhan theke save koro');window.open(videoUrl,'_blank')}
+ a.textContent=old};
+$('copy').onclick=async()=>{const v=$('link').value;if(!v)return;try{await navigator.clipboard.writeText(v);alert('Link copy hoise')}catch{$('link').select();document.execCommand('copy');alert('Link copy hoise')}};
+</script></body></html>
