@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGNES PRO - Real Video Generator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a0a0f;color:#fff;font-family:Inter,system-ui,sans-serif}
+header{padding:16px 20px;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:900;letter-spacing:1px}.logo span{color:#8b5cf6}
+.wrap{max-width:1100px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:800px){.wrap{grid-template-columns:1fr}}
+.card{background:#13131c;border:1px solid #26263a;border-radius:16px;padding:18px}
+input,textarea,select{width:100%;background:#0a0a0f;border:1px solid #333;color:#fff;border-radius:10px;padding:12px;margin:8px 0}
+textarea{min-height:110px}
+.row{display:flex;gap:8px}.row button{flex:1;padding:10px;border-radius:10px;border:1px solid #333;background:#1a1a26;color:#fff;cursor:pointer}
+.row button.active{background:#7c3aed;border-color:#7c3aed}
+#gen{width:100%;padding:14px;border:0;border-radius:12px;background:linear-gradient(90deg,#7c3aed,#2563eb);color:#fff;font-weight:800;font-size:16px;cursor:pointer;margin-top:10px}
+#log{background:#000;border-radius:12px;padding:12px;height:220px;overflow:auto;font-family:monospace;font-size:12px;line-height:1.6;white-space:pre-wrap}
+.badge{display:inline-block;padding:4px 10px;border-radius:20px;background:#222;font-size:12px}
+progress{width:100%}video{width:100%;border-radius:12px;background:#000}
+.dl{display:block;text-align:center;margin-top:10px;padding:12px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}
+.note{font-size:13px;color:#a1a1aa;line-height:1.6}
+</style></head><body>
+<header><div class="logo">AGNES <span>PRO</span></div><div class="badge">Official Site Er Moto • Frontend + Backend</div></header>
+<div class="wrap">
+<div class="card">
+<h2 style="margin:0">Create Video</h2>
+<p class="note">Key kokhono code e thake na. Tumi nije bosaba. Server sudhu request ta Agnes e pathay.</p>
+<label>Agnes API Key</label>
+<input id="key" type="password" placeholder="sk-... notun key ekhane bosau">
+<label>Prompt (English e likhle valo hoy)</label>
+<textarea id="prompt">A cinematic shot of a cat walking on the beach at sunset, soft ocean waves, warm golden lighting, realistic motion</textarea>
+<label>Ratio</label><div class="row" id="ratioRow"><button data-v="9:16" class="active">9:16 Shorts</button><button data-v="16:9">16:9 YouTube</button><button data-v="1:1">1:1</button></div>
+<label style="margin-top:10px;display:block">Duration</label><div class="row" id="durRow"><button data-v="5s" class="active">5s</button><button data-v="10s">10s</button></div>
+<button id="gen">▶ GENERATE VIDEO</button>
+<p class="note">Asol AI video instant hoy na. 60-150 sec lage. Eita queue + polling, fake animation na.</p>
+</div>
+<div class="card">
+<h3 style="margin:0">Preview + Download</h3>
+<p><span class="badge" id="statusBadge">IDLE</span> <span id="taskId"></span></p>
+<progress id="prog" value="0" max="100"></progress><p id="progText">0%</p>
+<video id="vid" controls playsinline style="display:none"></video>
+<a id="dl" class="dl" style="display:none" href="#" download>⬇ DIRECT DOWNLOAD VIDEO</a>
+<p><input id="link" readonly placeholder="Direct link ekhane asbe"></p>
+<button onclick="navigator.clipboard.writeText(document.getElementById('link').value);alert('Link copy hoise')" style="width:100%;padding:10px;border-radius:10px;background:#222;color:#fff;border:1px solid #333;cursor:pointer">Copy Direct Link</button>
+<h4>Live Log - Kothay Atkaitese Dekha Jabe</h4>
+<div id="log">Ready. Generate chap dau...\n</div>
+</div>
+</div>
+<script>
+let ratio='9:16', duration='5s';
+document.querySelectorAll('#ratioRow button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ratioRow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');ratio=b.dataset.v});
+document.querySelectorAll('#durRow button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#durRow button').forEach(x=>x.classList.remove('active'));b.classList.add('active');duration=b.dataset.v});
+function log(t){const el=document.getElementById('log');el.textContent+=new Date().toLocaleTimeString()+' - '+t+'\n';el.scrollTop=el.scrollHeight}
+document.getElementById('gen').onclick=async()=>{
+ const key=document.getElementById('key').value.trim();
+ const prompt=document.getElementById('prompt').value.trim();
+ if(!key) return alert('Age API Key bosau - platform.agnes-ai.com theke notun key ne');
+ if(!prompt) return alert('Prompt dao');
+ log('1. Frontend -> Backend /api/generate pathacchi...');
+ log('   Body: model=agnes-video-v2.0, ratio='+ratio+', duration='+duration);
+ document.getElementById('statusBadge').textContent='QUEUED';
+ try{
+  const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:key,prompt,ratio,duration})});
+  const data=await res.json();
+  log('2. Backend response: '+JSON.stringify(data).slice(0,500));
+  if(!res.ok){log('ERROR: '+ (data.error||data.message||JSON.stringify(data))); alert('Error: '+(data.error||JSON.stringify(data))); return;}
+  const id=data.id; if(!id){log('ERROR: id pai nai'); return;}
+  document.getElementById('taskId').textContent='Task: '+id;
+  log('3. Task paisi, id='+id+'. Ekhon 5 sec por por poll kortesi...');
+  let n=0;
+  const timer=setInterval(async()=>{
+   n++; const r=await fetch('/api/status?task_id='+encodeURIComponent(id)+'&api_key='+encodeURIComponent(key));
+   const d=await r.json();
+   log('Poll #'+n+' - status='+(d.status||'?')+', progress='+(d.progress||0)+'%');
+   document.getElementById('statusBadge').textContent=(d.status||'').toUpperCase();
+   document.getElementById('prog').value=d.progress||0;
+   document.getElementById('progText').textContent=(d.progress||0)+'% • '+Math.floor(n*5)+'s elapsed';
+   if(d.status==='completed' && d.video_url){
+     clearInterval(timer);
+     log('4. COMPLETED! video_url paisi: '+d.video_url);
+     const v=document.getElementById('vid'); v.src=d.video_url; v.style.display='block';
+     const dl=document.getElementById('dl'); dl.href=d.video_url; dl.style.display='block';
+     document.getElementById('link').value=d.video_url;
+   }
+   if(d.status==='failed'){clearInterval(timer); log('FAILED: '+JSON.stringify(d)); alert('Video failed, prompt change kore abar try koro');}
+   if(n>40){clearInterval(timer); log('Timeout - 3 min er beshi lagtese, abar try koro');}
+  },5000);
+ }catch(e){log('CORS / Network ERROR: '+e.message); alert('Backend cholteche kina check koro. Phone e sudhu HTML khulle hobe na, server lagbe.');}
+};
+</script></body></html>
